@@ -159,7 +159,7 @@
                 <property name="border_width">1</property>
                 <property name="orientation">vertical</property>
                 <child>
-                  <widget class="GtkCalendar" id="calendar1">
+                  <widget class="GtkCalendar" id="calendar">
                     <property name="width_request">200</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -189,7 +189,7 @@
               </packing>
             </child>
             <child>
-              <widget class="GtkTextView" id="textview1">
+              <widget class="GtkTextView" id="content">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="border_width">1</property>
