@@ -15,6 +15,11 @@ typedef enum {
 } parsingStatus;
 
 
+
+/**
+ * 現在XMLReaderがポイントしている場所の
+ * XMLノード1つを処理する
+ */
 void processNode(xmlTextReaderPtr reader)
 {
     static parsingStatus state = STATE_NONE;
@@ -24,13 +29,16 @@ void processNode(xmlTextReaderPtr reader)
 
     nodeType = xmlTextReaderNodeType(reader);
     
-    if (nodeType == XML_READER_TYPE_ELEMENT) {  //  開始タグ
+    if (nodeType == XML_READER_TYPE_ELEMENT) {              //  開始タグ
         name = xmlTextReaderName(reader);
         if ( xmlStrcmp(name, BAD_CAST "diary") == 0 ) {
             //  do nothing
 
         } else if ( xmlStrcmp(name, BAD_CAST "item") == 0 ) {
             state = STATE_ITEM;
+
+            //  <item>タグの中には、日記の日付を表す date="yyyymmdd" という属性が
+            //  設定されているはずなので、これを探す。
             date = xmlTextReaderGetAttribute(reader, BAD_CAST "date");
             if (!date) {
                 fprintf(stderr, "Invalid format (attribute 'date' not found)\n");
@@ -47,7 +55,7 @@ void processNode(xmlTextReaderPtr reader)
     } else if (nodeType == XML_READER_TYPE_END_ELEMENT) {   //  終了タグ
         state = STATE_NONE;
     
-    } else if (nodeType == XML_READER_TYPE_TEXT) {  //  テキスト
+    } else if (nodeType == XML_READER_TYPE_TEXT) {          //  テキスト
         assert(state == STATE_ITEM);
 
         value = xmlTextReaderValue(reader);
@@ -56,12 +64,17 @@ void processNode(xmlTextReaderPtr reader)
             exit(-1);
         }
 
+        //  日付 => 本文 の形式でハッシュに登録する
         g_hash_table_insert(diaryData, (gpointer)date, value);
     } 
         
 }
 
 
+
+/**
+ * 日記データをXMLファイルより読み込む
+ */
 void diaryDataInit()
 {
     diaryData = g_hash_table_new(g_str_hash, g_str_equal);
@@ -70,6 +83,8 @@ void diaryDataInit()
     int ret;
     
     reader = xmlNewTextReaderFilename("./diary.xml");
+    assert(reader);
+
     ret = xmlTextReaderRead(reader);
 
     while (ret == 1) {
@@ -81,6 +96,12 @@ void diaryDataInit()
 }
 
 
+/**
+ * カレンダー上の日付が選択されたときにコールされる
+ * コールバック関数。
+ * その日付の日記本文を読み込んで、右側のテキストエリアに
+ * 表示する
+ */
 void calendar_day_selected(GtkCalendar *calendar, GtkTextView *textarea) 
 {
     guint year, month, day;
@@ -88,24 +109,27 @@ void calendar_day_selected(GtkCalendar *calendar, GtkTextView *textarea)
     gpointer content;
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(textarea);
 
+    //  日付文字列(yyyymmdd)の作成
     gtk_calendar_get_date(calendar, &year, &month, &day);
     month++;
     snprintf(date, 9,"%04d%02d%02d", year, month, day);
-    printf("Date: %s\n", date);
     
     content = g_hash_table_lookup(diaryData, date);
     if (content) {
-        printf("Content: %s\n", (char *)content);
         gtk_text_buffer_set_text(buffer, content, -1);
     }
     else {
-        printf("Content: (null)\n");
+        //  その日付の日記が未登録である場合は
+        //  日記本文＝空文字列とみなす
         gtk_text_buffer_set_text(buffer, "", -1);
     }
     
 }
 
 
+/**
+ * main
+ */
 int main(int argc, char *argv[])
 {
     GtkWidget *window;
