@@ -8,6 +8,12 @@
 
 GHashTable *diaryData;
 
+/**
+ *  現在編集中の年月日。
+ *  月は 1-12 の範囲で扱う。
+ */
+guint    curr_year, curr_month, curr_day;
+
 
 typedef enum {
     STATE_NONE,
@@ -71,13 +77,22 @@ void processNode(xmlTextReaderPtr reader)
 }
 
 
+/**
+ * diaryData の value を変更するときに元データの領域を開放するための関数
+ */
+void destroy_content(gpointer data) 
+{
+    g_free(data);
+}
+
+
 
 /**
  * 日記データをXMLファイルより読み込む
  */
 void diaryDataInit()
 {
-    diaryData = g_hash_table_new(g_str_hash, g_str_equal);
+    diaryData = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, destroy_content);
 
     xmlTextReaderPtr reader;
     int ret;
@@ -104,15 +119,27 @@ void diaryDataInit()
  */
 void calendar_day_selected(GtkCalendar *calendar, GtkTextView *textarea) 
 {
-    guint year, month, day;
     gchar date[9];
     gpointer content;
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(textarea);
 
+    //  元々編集中だった日付の日記を
+    //  diaryData に書き出す
+    if (curr_year && curr_month && curr_day) {
+
+        GtkTextIter buff_start, buff_end;
+        gtk_text_buffer_get_bounds(buffer, &buff_start, &buff_end);
+        
+        content = gtk_text_buffer_get_text(buffer, &buff_start, &buff_end, FALSE);
+
+        snprintf(date, 9, "%04d%02d%02d", curr_year, curr_month, curr_day);
+        g_hash_table_insert(diaryData, date, content);
+    }
+
     //  日付文字列(yyyymmdd)の作成
-    gtk_calendar_get_date(calendar, &year, &month, &day);
-    month++;
-    snprintf(date, 9,"%04d%02d%02d", year, month, day);
+    gtk_calendar_get_date(calendar, &curr_year, &curr_month, &curr_day);
+    curr_month++;
+    snprintf(date, 9,"%04d%02d%02d", curr_year, curr_month, curr_day);
     
     content = g_hash_table_lookup(diaryData, date);
     if (content) {
@@ -138,6 +165,7 @@ int main(int argc, char *argv[])
     GladeXML *xml;
 
     diaryDataInit();
+    curr_year = curr_month = curr_day = 0;
 
     gtk_init(&argc, &argv);
 
