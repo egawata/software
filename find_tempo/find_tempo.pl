@@ -11,9 +11,6 @@ use Data::Dumper;
 my $FRAME_SIZE = 1024;
 my $NUM_FRAMES = 1024;  #  2のn乗でないといけない
 
-my $SAMPLE_RATE = 44100;
-my $SAMPLE_FREQ = $SAMPLE_RATE / $FRAME_SIZE;
-
 my $PI2 = 2.0 * 3.14159;
 
 main();
@@ -22,14 +19,17 @@ exit(0);
 
 sub main {
     my $infile = $ARGV[0] or die "Filename required\n";
+    my $start_sec = $ARGV[1] || 0;
 
     my $wav = new Audio::Wav;
     my $read = $wav->read($infile);
 
+    my $details = $read->details();
+    my $SAMPLE_RATE = $details->{sample_rate};
+    my $SAMPLE_FREQ = $SAMPLE_RATE / $FRAME_SIZE;
+
     #  50秒くらい読み飛ばす
-    for ( 0 .. $SAMPLE_RATE * 50 ) {
-        $read->read();
-    }
+    $read->move_to_sample( $SAMPLE_RATE * $start_sec );
 
     my @deltas = ();
     my $prev_level = 0;
@@ -59,6 +59,7 @@ sub main {
         my $sin = $fft_res->[$_ * 2 + 1];
         my $bpm = $_ / ($NUM_FRAMES / $SAMPLE_FREQ) * 60;
         my $val = sqrt($cos ** 2 + $sin ** 2);
+        print "$bpm\t$val\n";
         if ( $val > min(values %peaks) ) {
 
             #  特定BPMの周囲に最大値が集まっていることがあるので、
