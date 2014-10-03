@@ -2,13 +2,12 @@ use strict;
 use warnings;
 
 use Audio::Wav;
+use Data::Dumper;
 use List::Util;
 
 
-my $SAMPLE_RATE = 44100;
-
 #  この振幅を超えた位置を演奏開始とみなす
-my $START_THRESHOLD = 5000;
+my $START_THRESHOLD = 500;
 
 #  音源のテンポ
 my $TEMPO = 120;
@@ -38,13 +37,38 @@ sub main {
 
     #  開始位置を探す
     my $time = 0;
-    while ( my (@samples) = $read->read() ) {
-        my $amp = List::Util::sum0(@samples) / scalar(@samples);
-        $amp > $START_THRESHOLD and last;
+    while ( my ($sample) = $read->read() ) {
+        $sample > $START_THRESHOLD and last;
         $time++;
     }
 
     print "Start time: $time\n";
+
+    my $details_read = $read->details;
+    my $SAMPLE_RATE = $details_read->{sample_rate};
+
+    my $details_write = {};
+    $details_write->{$_} = $details_read->{$_} for qw/ bits_sample sample_rate channels /;
+
+    my $prev_pos = $read->position_samples();
+    $prev_pos -= 512;
+    $read->move_to_sample($prev_pos);
+    for my $pattern_num (1 .. 128) {
+        my $outfile = $infile;
+        $outfile =~ s/\.wav$/sprintf("%03d.wav", $pattern_num++)/e;
+        print "$outfile\t";
+
+        my $write = $wav->write($outfile, $details_write);
+        
+        my $data = $read->read_raw_samples($SAMPLE_RATE * 60 / $TEMPO * $NUM_QUARTER_TONES); 
+        $write->write_raw_samples($data);
+        $write->finish();
+        
+        my $curr_pos = $read->position_samples();
+        print sprintf("Position: %d (+%d)\n", $curr_pos, $curr_pos - $prev_pos);
+        $prev_pos = $curr_pos;
+    }
+
 }
     
         
