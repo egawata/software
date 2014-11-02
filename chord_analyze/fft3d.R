@@ -4,7 +4,7 @@ library(rgl)
 fftStep <- 512          #  frame size
 fftLength <- 32768
 realFftLength <- 4096
-sampleFreq <- 44100
+sampleFreq <- 48000
 numPreview <- 256       #  Range of displayed frequency
 numRepeat <- 75         #  num of frames from start
 
