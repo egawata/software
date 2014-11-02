@@ -15,6 +15,24 @@
   この結果ファイルは、R で
     res <- scan("do_patterns/fft_result/result_001.txt") のようにして読み込み可能
 
+- 学習データ作成
+  perl merge_fft_data.pl
+  /tmp/fft_result_train.txt に学習データが作成される
+  /tmp/fft_result_test.txt に検証用のデータが作成される
+  
+- 学習
+  dtrain <- read.table("/tmp/fft_result_train.txt", header=T)
+  d.nnet <- nnet(result~., dtrain, size = 5, decay = 1, maxit=10000)
 
+- 検証
+  dtest <- read.table("/tmp/fft_result_test.txt", header=T)
+  table(dtest$result, round(predict(d.nnet, dtest[,-192]), 0))
+
+       0  1
+  do  38  3
+  reb  3 38
+
+  do-0 と reb-1 が、正しく判定されたものの数。上記はそこそこ良い結果？
+　パラメータはいろいろ変えて試してみる。
 
 
